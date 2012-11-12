@@ -17,9 +17,13 @@ class Sock5Server(SocketServer.StreamRequestHandler):
         print 'sock connection from {0}'.format(self.client_address)
         sock = self.connection
         data = self.recv(sock,257)
+        if not data:
+            sock.close()
+            return
         self.handle_auth(sock,data)
 
         rst = self.recv(sock,256)
+
         if  ord(rst[1]) != 1:
             reply = '\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00'
             self.send(sock,reply)
@@ -32,16 +36,23 @@ class Sock5Server(SocketServer.StreamRequestHandler):
             port = struct.unpack('>H',rst[(5+ord(rst[4])):(7+ord(rst[4]))])
         else:  #ip-6
             return
+
         try:
             remote = socket.create_connection((addr,port[0]))
         except:
             print 'socket error'
             return
+
         pair = remote.getsockname()
         print 'Connect to remote: {0}:{1}'.format(addr, port[0])
         reply = '\x05\x00\x00\x01'
         reply += socket.inet_aton(pair[0]) + struct.pack('>H',pair[1])
-        self.send(sock,reply)
+        try:
+            self.send(sock,reply)
+        except socket.error:
+            sock.close()
+            remote.close()
+            return
 
         self.handle_chat(sock,remote)
 
@@ -64,6 +75,8 @@ class Sock5Server(SocketServer.StreamRequestHandler):
                 if remote in r:
                     if self.send(sock, self.recv(remote, 2096)) <= 0:
                         break
+        except:
+            pass
         finally:
             remote.close()
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 import SocketServer
 import struct
 import socket
@@ -18,6 +19,9 @@ class Hosts():
         self.hosts = hosts
         self.index = 0
     def get_host(self):
+        if len(self.hosts) == 0:
+            print 'Sorry, you have no sock5 server alive now'
+            return None
         self.index += 1
         try:
             return self.hosts[self.index]
@@ -25,13 +29,18 @@ class Hosts():
             self.index = 0
             return self.hosts[0]
 hosts = Hosts()
+addr = Hosts()
 
 class Sock5Local(SocketServer.StreamRequestHandler):
     def handle(self):
         sock = self.connection
         try:
-            remote = socket.create_connection(hosts.get_host())
+            addr = hosts.get_host()
+            if not addr:
+                return
+            remote = socket.create_connection(addr)
         except:
+            hosts.hosts.remove(addr)
             print 'Socket error'
             return
         self.handle_chat(sock, remote)
@@ -47,6 +56,8 @@ class Sock5Local(SocketServer.StreamRequestHandler):
                 if remote in r:
                     if self.send(sock, self.recv(remote, 2096)) <= 0:
                         break
+        except:
+            pass
         finally:
             remote.close()
             sock.close()
@@ -70,7 +81,6 @@ def main():
         return
     hosts.hosts = hosts_
     server = ThreadingTCPServer(('', PORT), Sock5Local)
-#    server.allow_resue_address = True
     print 'start local proxy at port {0}'.format(PORT)
     server.serve_forever()
 
