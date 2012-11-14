@@ -40,7 +40,10 @@ class Sock5Server(SocketServer.StreamRequestHandler):
         try:
             remote = socket.create_connection((addr,port[0]))
         except:
+            reply = '\x05\x05\x00\x01\x00\x00\x00\x00\x00\x00'
+            self.send(sock,reply)
             print 'socket error'
+
             return
 
         pair = remote.getsockname()
